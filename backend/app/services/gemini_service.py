@@ -47,16 +47,49 @@ def analyze_sentiment(text):
 
 def analyze_context(text):
     """
-    Perform context analysis using SpaCy to extract entities and topics.
+    Perform context analysis using SpaCy to extract entities and topics,
+    filtering out filler words.
     """
     doc = nlp(text)
     entities = [ent.text for ent in doc.ents]
-    topics = set([token.lemma_ for token in doc if token.is_alpha and not token.is_stop])
+    
+    # Define a set of common filler words you want to ignore
+    filler_words = {
+    "like", "uh", "um", "you know", "so", "actually", "basically", "literally", "just",
+    "well", "okay", "right", "yeah", "y'know", "I mean", "sort of", "kind of", "sorta", "kinda",
+    "anyway", "really", "actually", "honestly", "truthfully", "in fact", "you see", "mind you",
+    "at the end of the day", "to be honest", "to be fair", "you get me", "whatever", "stuff",
+    "things", "thing", "obviously", "apparently", "clearly", "seriously", "basically", "literally",
+    "probably", "maybe", "perhaps", "like I said", "I guess", "I suppose", "I think", "I believe",
+    "you know what I mean", "you know what I'm saying", "as I was saying", "for sure", "I reckon",
+    "to be clear", "to be real", "let me think", "hold on", "wait a minute", "give me a sec", "I feel like",
+    "it seems like", "it looks like", "it sounds like", "it feels like", "to be honest", "if that makes sense",
+    "at the end of the day", "in my opinion", "from my perspective", "from my point of view",
+    "from what I can tell", "from what I understand", "you know what I mean", "as far as I know",
+    "kind of like", "sort of like", "more or less", "give or take", "more like", "less like",
+    "if that makes sense", "to some extent", "to a certain extent", "to a degree", "at least",
+    "at most", "in some way", "in a way", "in some sense", "in a sense", "kind of", "sort of",
+    "somehow", "somewhat", "in other words", "in a nutshell", "basically", "generally speaking",
+    "for the most part", "by and large", "at this point", "to this day", "to this moment",
+    "to this extent", "to this degree", "for instance", "for example", "like for instance",
+    "you could say", "in a manner of speaking", "in a way of speaking", "for what it's worth",
+    "on the whole", "in a way of thinking", "so to speak", "as it were"
+    }
 
+    
+    topics = set(
+        token.lemma_.lower()
+        for token in doc 
+        if token.is_alpha 
+           and not token.is_stop 
+           and token.lemma_.lower() not in filler_words
+    )
+    
     return {
         "entities": entities,
         "topics": list(topics)
     }
+
 
 def process_vent(vent_text: str):
     if not GEMINI_API_KEY:

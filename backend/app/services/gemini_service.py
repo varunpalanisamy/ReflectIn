@@ -4,6 +4,7 @@ import spacy
 from app.config import GEMINI_API_KEY
 from app.prompts import get_prompt_for_reflection
 from app.config import conversations
+from .filtering import query_similar_entries, get_prompt_for_reflection_with_memory
 from datetime import datetime
 
 def save_conversation(user_id, topic, user_message, summary, bot_reply, sentiment, context):
@@ -23,14 +24,9 @@ def save_conversation(user_id, topic, user_message, summary, bot_reply, sentimen
 nlp = spacy.load("en_core_web_sm")
 
 def analyze_sentiment(text):
-    """
-    Perform sentiment analysis on the given text using TextBlob.
-    The sentiment score will be normalized to a scale of 1-10.
-    """
     analysis = TextBlob(text)
-    polarity = analysis.sentiment.polarity  # Range -1 to 1
-
-    sentiment_score = int(((polarity + 1) / 2) * 9) + 1  # Range 1-10
+    polarity = analysis.sentiment.polarity
+    sentiment_score = int(((polarity + 1) / 2) * 9) + 1
 
     if sentiment_score > 6:
         sentiment_label = "Positive"
@@ -46,6 +42,11 @@ def analyze_sentiment(text):
     }
 
 def analyze_context(text):
+
+    doc = nlp(text)
+    entities = [ent.text for ent in doc.ents]
+    topics = set([token.lemma_ for token in doc if token.is_alpha and not token.is_stop])
+
     """
     Perform context analysis using SpaCy to extract entities and topics,
     filtering out filler words.
@@ -85,6 +86,7 @@ def analyze_context(text):
            and token.lemma_.lower() not in filler_words
     )
     
+
     return {
         "entities": entities,
         "topics": list(topics)
@@ -95,13 +97,24 @@ def process_vent(vent_text: str):
     if not GEMINI_API_KEY:
         return {
             "summary": "Error: API key not set",
-            "reflective_prompt": "Please configure your GEMINI_API_KEY.",
+            "bot_reply": "Please configure your GEMINI_API_KEY.",
             "sentiment": {"polarity": 0, "sentiment_score": 5, "sentiment_label": "Neutral"},
             "context": {"entities": [], "topics": []}
         }
 
     sentiment_result = analyze_sentiment(vent_text)
     context_result = analyze_context(vent_text)
+    
+    user_id = "shivani"  # (Replace with dynamic user info as needed)
+
+    # First, query for similar past entries using the current vent text.
+    memory_context = query_similar_entries(user_id, vent_text)
+    
+    # Decide which prompt to use:
+    if memory_context:
+        reflective_prompt_text = get_prompt_for_reflection_with_memory(vent_text, memory_context)
+    else:
+        reflective_prompt_text = get_prompt_for_reflection(sentiment_result["sentiment_score"], vent_text)
 
     summary_prompt = {
         "contents": [
@@ -119,7 +132,7 @@ def process_vent(vent_text: str):
     reflection_prompt = {
         "contents": [
             {
-                "parts": [{"text": get_prompt_for_reflection(sentiment_result["sentiment_score"], vent_text)}],
+                "parts": [{"text": reflective_prompt_text}],
                 "role": "user"
             }
         ],
@@ -137,7 +150,6 @@ def process_vent(vent_text: str):
             json=summary_prompt,
             headers=headers
         )
-
         reflection_response = requests.post(
             f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key={GEMINI_API_KEY}",
             json=reflection_prompt,
@@ -148,27 +160,23 @@ def process_vent(vent_text: str):
         reflection_response.raise_for_status()
 
         summary_data = summary_response.json()
-        print("Summary data", summary_data)
         try:
             summary_text = summary_data["candidates"][0]["content"]["parts"][0]["text"]
         except (KeyError, IndexError, TypeError):
             summary_text = "No summary available."
             
         reflection_data = reflection_response.json()
-        print("reflection data: ", reflection_data)
-        # try:
-        reflection_text = reflection_data["candidates"][0]["content"]["parts"][0]["text"]
-        # except (KeyError, IndexError, TypeError):
-        #     reflection_text = "How are you feeling now?"
-        print("DEBUG: Extracted reflection_text:", reflection_text)
-
-
+        try:
+            reflection_text = reflection_data["candidates"][0]["content"]["parts"][0]["text"]
+        except (KeyError, IndexError, TypeError):
+            reflection_text = "How are you feeling now?"
+        
         # Determine topic from context
         topic = context_result["topics"][0] if context_result["topics"] else "general"
 
         # Save the conversation to MongoDB
         save_conversation(
-            user_id="shivani",
+            user_id=user_id,
             topic=topic,
             user_message=vent_text,
             summary=summary_text,
@@ -176,7 +184,6 @@ def process_vent(vent_text: str):
             sentiment=sentiment_result,
             context=context_result
         )
-
 
         return {
             "user_message": vent_text,
@@ -187,7 +194,6 @@ def process_vent(vent_text: str):
             "context": context_result
         }
 
-
     except requests.exceptions.RequestException as e:
         return {
             "user_message": vent_text,
@@ -196,5 +202,3 @@ def process_vent(vent_text: str):
             "sentiment": sentiment_result,
             "context": context_result
         }
-
-

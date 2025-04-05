@@ -7,3 +7,4 @@ requests
 dotenv
 spacy
 textblob
+scikit-learn

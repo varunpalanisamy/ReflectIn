@@ -5,3 +5,5 @@ pydantic
 apscheduler
 requests
 dotenv
+spacy
+textblob

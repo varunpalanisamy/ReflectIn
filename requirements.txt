@@ -4,3 +4,4 @@ pymongo
 pydantic
 apscheduler
 requests
+dotenv

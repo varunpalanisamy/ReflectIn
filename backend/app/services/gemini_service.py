@@ -3,7 +3,20 @@ from textblob import TextBlob
 import spacy
 from app.config import GEMINI_API_KEY
 from app.prompts import get_prompt_for_reflection
+from app.config import conversations
+from datetime import datetime
 
+def save_conversation(user_id, topic, vent_text, summary, ai_response, sentiment):
+    entry = {
+        "user_id": user_id,
+        "topic": topic,
+        "vent_text": vent_text,
+        "summary": summary,
+        "ai_response": ai_response,
+        "sentiment": sentiment,
+        "timestamp": datetime.utcnow()
+    }
+    conversations.insert_one(entry)
 
 # Load SpaCy model for context analysis
 nlp = spacy.load("en_core_web_sm")
@@ -14,10 +27,9 @@ def analyze_sentiment(text):
     The sentiment score will be normalized to a scale of 1-10.
     """
     analysis = TextBlob(text)
-    polarity = analysis.sentiment.polarity  # Range: -1 to 1
+    polarity = analysis.sentiment.polarity  # Range -1 to 1
 
-    # Normalize polarity to a scale of 1-10
-    sentiment_score = int(((polarity + 1) / 2) * 9) + 1  # Ensure it's between 1-10
+    sentiment_score = int(((polarity + 1) / 2) * 9) + 1  # Range 1-10
 
     if sentiment_score > 6:
         sentiment_label = "Positive"
@@ -54,11 +66,9 @@ def process_vent(vent_text: str):
             "context": {"entities": [], "topics": []}
         }
 
-    # Analyze user input
     sentiment_result = analyze_sentiment(vent_text)
     context_result = analyze_context(vent_text)
 
-    # --- 1. Generate a summary ---
     summary_prompt = {
         "contents": [
             {
@@ -72,7 +82,6 @@ def process_vent(vent_text: str):
         }
     }
 
-    # --- 2. Generate a reflective prompt ---
     reflection_prompt = {
         "contents": [
             {
@@ -89,7 +98,6 @@ def process_vent(vent_text: str):
     headers = {"Content-Type": "application/json"}
 
     try:
-        # Make both requests
         summary_response = requests.post(
             f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key={GEMINI_API_KEY}",
             json=summary_prompt,
@@ -107,6 +115,19 @@ def process_vent(vent_text: str):
 
         summary_text = summary_response.json().get("candidates", [{}])[0].get("content", {}).get("parts", [{}])[0].get("text", "No summary available.")
         reflection_text = reflection_response.json().get("candidates", [{}])[0].get("content", {}).get("parts", [{}])[0].get("text", "How are you feeling now?")
+
+        # Determine topic from context
+        topic = context_result["topics"][0] if context_result["topics"] else "general"
+
+        # Save the conversation to MongoDB
+        save_conversation(
+            user_id="shivani",  # later replace with dynamic user_id
+            topic=topic,
+            vent_text=vent_text,
+            summary=summary_text,
+            ai_response=reflection_text,
+            sentiment=sentiment_result
+        )
 
         return {
             "summary": summary_text,

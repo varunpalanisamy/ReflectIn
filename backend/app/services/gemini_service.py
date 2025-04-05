@@ -2,6 +2,8 @@ import requests
 from textblob import TextBlob
 import spacy
 from app.config import GEMINI_API_KEY
+from app.prompts import get_prompt_for_reflection
+
 
 # Load SpaCy model for context analysis
 nlp = spacy.load("en_core_web_sm")
@@ -44,10 +46,6 @@ def analyze_context(text):
     }
 
 def process_vent(vent_text: str):
-    """
-    Send the vent text to the Gemini API to get a summary and a reflective prompt.
-    """
-    # Check if API key is set
     if not GEMINI_API_KEY:
         return {
             "summary": "Error: API key not set",
@@ -56,45 +54,63 @@ def process_vent(vent_text: str):
             "context": {"entities": [], "topics": []}
         }
 
-    payload = {
+    # Analyze user input
+    sentiment_result = analyze_sentiment(vent_text)
+    context_result = analyze_context(vent_text)
+
+    # --- 1. Generate a summary ---
+    summary_prompt = {
         "contents": [
             {
-                "parts": [{"text": vent_text}],
+                "parts": [{"text": f"Summarize this vent in 1-2 sentences without giving advice:\n\n{vent_text}"}],
                 "role": "user"
             }
         ],
         "generationConfig": {
             "maxOutputTokens": 100,
-            "temperature": 0.7,
-            "topP": 0.9,
-            "topK": 40
+            "temperature": 0.3
         }
     }
 
-    headers = {
-        "Content-Type": "application/json"
+    # --- 2. Generate a reflective prompt ---
+    reflection_prompt = {
+        "contents": [
+            {
+                "parts": [{"text": get_prompt_for_reflection(sentiment_result["sentiment_score"], vent_text)}],
+                "role": "user"
+            }
+        ],
+        "generationConfig": {
+            "maxOutputTokens": 100,
+            "temperature": 0.7
+        }
     }
 
+    headers = {"Content-Type": "application/json"}
+
     try:
-        response = requests.post(
+        # Make both requests
+        summary_response = requests.post(
             f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key={GEMINI_API_KEY}",
-            json=payload,
+            json=summary_prompt,
             headers=headers
         )
-        response.raise_for_status()
-        data = response.json()
 
-        # Extract the summary from the response
-        summary = data.get("candidates", [{}])[0].get("content", {}).get("parts", [{}])[0].get("text", "No summary available.")
-        prompt = "What emotions were you feeling when this happened?"
+        reflection_response = requests.post(
+            f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key={GEMINI_API_KEY}",
+            json=reflection_prompt,
+            headers=headers
+        )
 
-        # Sentiment and context analysis
-        sentiment_result = analyze_sentiment(vent_text)
-        context_result = analyze_context(vent_text)
+        summary_response.raise_for_status()
+        reflection_response.raise_for_status()
+
+        summary_text = summary_response.json().get("candidates", [{}])[0].get("content", {}).get("parts", [{}])[0].get("text", "No summary available.")
+        reflection_text = reflection_response.json().get("candidates", [{}])[0].get("content", {}).get("parts", [{}])[0].get("text", "How are you feeling now?")
 
         return {
-            "summary": summary,
-            "reflective_prompt": prompt,
+            "summary": summary_text,
+            "reflective_prompt": reflection_text,
             "sentiment": sentiment_result,
             "context": context_result
         }
@@ -103,6 +119,6 @@ def process_vent(vent_text: str):
         return {
             "summary": f"Error: {str(e)}",
             "reflective_prompt": "Could you tell me more about what happened?",
-            "sentiment": {"polarity": 0, "sentiment_score": 5, "sentiment_label": "Neutral"},
-            "context": {"entities": [], "topics": []}
+            "sentiment": sentiment_result,
+            "context": context_result
         }

@@ -1,15 +1,11 @@
-import { Text, View } from "react-native";
+// contains chat screen (main)
 
-export default function Index() {
+import { View, Text } from 'react-native';
+
+export default function ChatScreen() {
   return (
-    <View
-      style={{
-        flex: 1,
-        justifyContent: "center",
-        alignItems: "center",
-      }}
-    >
-      <Text>Edit app/index.tsx to edit this screen.</Text>
+    <View>
+      <Text>This is the Chat tab</Text>
     </View>
   );
 }

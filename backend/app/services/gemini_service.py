@@ -5,20 +5,21 @@ def process_vent(vent_text: str):
     """
     Send the vent text to the Gemini API to get a summary and a reflective prompt.
     """
-    # Check if API key is set
     if not GEMINI_API_KEY:
         return "Error: API key not set", "Please configure your GEMINI_API_KEY."
 
     payload = {
-        "prompt": {
-            "text": vent_text
-        },
-        "model": "models/gemini-2.0-flash",
-        "parameters": {
-            "max_output_tokens": 100,
+        "contents": [
+            {
+                "parts": [{"text": vent_text}],
+                "role": "user"
+            }
+        ],
+        "generationConfig": {
+            "maxOutputTokens": 100,
             "temperature": 0.7,
-            "top_p": 0.9,
-            "top_k": 40
+            "topP": 0.9,
+            "topK": 40
         }
     }
 
@@ -35,8 +36,7 @@ def process_vent(vent_text: str):
         response.raise_for_status()
         data = response.json()
 
-        # Extract the summary from the response
-        summary = data.get("candidates", [{}])[0].get("output", "No summary available.")
+        summary = data.get("candidates", [{}])[0].get("content", {}).get("parts", [{}])[0].get("text", "No summary available.")
         prompt = "What emotions were you feeling when this happened?"
 
         return summary, prompt

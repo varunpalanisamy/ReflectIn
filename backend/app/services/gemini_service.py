@@ -6,14 +6,15 @@ from app.prompts import get_prompt_for_reflection
 from app.config import conversations
 from datetime import datetime
 
-def save_conversation(user_id, topic, vent_text, summary, ai_response, sentiment):
+def save_conversation(user_id, topic, user_message, summary, bot_reply, sentiment, context):
     entry = {
         "user_id": user_id,
         "topic": topic,
-        "vent_text": vent_text,
+        "user_message": user_message,
         "summary": summary,
-        "ai_response": ai_response,
+        "bot_reply": bot_reply,
         "sentiment": sentiment,
+        "context": context,
         "timestamp": datetime.utcnow()
     }
     conversations.insert_one(entry)
@@ -113,33 +114,54 @@ def process_vent(vent_text: str):
         summary_response.raise_for_status()
         reflection_response.raise_for_status()
 
-        summary_text = summary_response.json().get("candidates", [{}])[0].get("content", {}).get("parts", [{}])[0].get("text", "No summary available.")
-        reflection_text = reflection_response.json().get("candidates", [{}])[0].get("content", {}).get("parts", [{}])[0].get("text", "How are you feeling now?")
+        summary_data = summary_response.json()
+        print("Summary data", summary_data)
+        try:
+            summary_text = summary_data["candidates"][0]["content"]["parts"][0]["text"]
+        except (KeyError, IndexError, TypeError):
+            summary_text = "No summary available."
+            
+        reflection_data = reflection_response.json()
+        print("reflection data: ", reflection_data)
+        # try:
+        reflection_text = reflection_data["candidates"][0]["content"]["parts"][0]["text"]
+        # except (KeyError, IndexError, TypeError):
+        #     reflection_text = "How are you feeling now?"
+        print("DEBUG: Extracted reflection_text:", reflection_text)
+
 
         # Determine topic from context
         topic = context_result["topics"][0] if context_result["topics"] else "general"
 
         # Save the conversation to MongoDB
         save_conversation(
-            user_id="shivani",  # later replace with dynamic user_id
+            user_id="shivani",
             topic=topic,
-            vent_text=vent_text,
+            user_message=vent_text,
             summary=summary_text,
-            ai_response=reflection_text,
-            sentiment=sentiment_result
+            bot_reply=reflection_text,
+            sentiment=sentiment_result,
+            context=context_result
         )
 
+
         return {
+            "user_message": vent_text,
+            "topic": topic, 
             "summary": summary_text,
-            "reflective_prompt": reflection_text,
+            "bot_reply": reflection_text,
             "sentiment": sentiment_result,
             "context": context_result
         }
+
 
     except requests.exceptions.RequestException as e:
         return {
-            "summary": f"Error: {str(e)}",
-            "reflective_prompt": "Could you tell me more about what happened?",
+            "user_message": vent_text,
+            "summary": "Summary unavailable due to an error.",
+            "bot_reply": "Could you tell me more about what happened?",
             "sentiment": sentiment_result,
             "context": context_result
         }
+
+

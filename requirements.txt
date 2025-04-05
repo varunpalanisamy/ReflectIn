@@ -7,4 +7,3 @@ requests
 dotenv
 spacy
 textblob
-pymongo

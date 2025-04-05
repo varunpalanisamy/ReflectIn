@@ -19,7 +19,9 @@ async def chat_with_bot(chat_msg: ChatMessage):
     result = process_vent(chat_msg.user_message)
     
     # The reflective prompt is what the bot "says" in response.
-    bot_reply = result.get("reflective_prompt", "How are you feeling now?")
+    # bot_reply = result.get("reflective_prompt", "How are you feeling now?")
+    bot_reply = result.get("bot_reply", "How are you feeling now?")
+
     
     return ChatResponse(
          user_message = chat_msg.user_message,

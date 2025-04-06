@@ -1,6 +1,8 @@
-from fastapi import APIRouter, HTTPException
+# routes.py
+from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel
-from app.services.gemini_service import process_vent
+from app.services.gemini_service import process_vent, generate_checkup_message
+
 
 router = APIRouter()
 
@@ -27,3 +29,15 @@ async def chat_with_bot(chat_msg: ChatMessage):
          sentiment = result.get("sentiment", {}),
          context = result.get("context", {})
     )
+    
+
+@router.get("/checkup")
+async def checkup():
+    try:
+        # Call generate_checkup_message with an empty string (or any default value).
+        checkup_message = generate_checkup_message("")
+        if not checkup_message:
+            raise HTTPException(status_code=404, detail="Checkup message not found")
+        return {"checkup_message": checkup_message}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))

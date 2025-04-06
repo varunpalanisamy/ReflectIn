@@ -217,3 +217,58 @@ def process_vent(vent_text: str):
             "sentiment": sentiment_result,
             "context": context_result
         }
+    
+def generate_checkup_message(thread_id: str) -> str:
+    # Retrieve the most recent conversation for the thread.
+    conversation = conversations.find_one({"thread_id": thread_id}, sort=[("timestamp", -1)])
+    
+    if conversation:
+        summary_text = conversation.get("summary", "").strip()
+        if summary_text:
+            prompt_text = (
+                f"Based on our previous conversation summarized as: '{summary_text}', "
+                f"generate one clear, creative, and supportive check-up message asking: "
+                f"'How are you feeling now? Has your situation improved?' "
+                f"Keep it friendly and uplifting. REMEMBER JUST ONE RESPONSE. that should be the only thing in the output. Also keep in mind to definitely bring up the main topic of conversation in the follow up message."
+            )
+        else:
+            prompt_text = (
+                "Generate one clear, creative, and supportive check-up message: 'How are you feeling now?'. REMEMBER JUST ONE RESPONSE. that should be the only thing in the output."
+            )
+    else:
+        prompt_text = (
+            "Generate one clear, creative, and supportive check-up message: 'How are you feeling now?'. REMEMBER JUST ONE RESPONSE. that should be the only thing in the output."
+        )
+
+    headers = {"Content-Type": "application/json"}
+    payload = {
+        "contents": [
+            {
+                "parts": [{"text": prompt_text}],
+                "role": "user"
+            }
+        ],
+        "generationConfig": {
+            "maxOutputTokens": 50,  # Limit to one concise message.
+            "temperature": 0.7,
+            "top_p": 0.9,
+            "top_k": 40
+        }
+    }
+    
+    try:
+        response = requests.post(
+            f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key={GEMINI_API_KEY}",
+            json=payload,
+            headers=headers
+        )
+        response.raise_for_status()
+        data = response.json()
+        checkup_message = data.get("candidates", [{}])[0].get("content", {}).get("parts", [{}])[0].get("text", "")
+        if checkup_message:
+            return checkup_message.strip()
+    except Exception as e:
+        print("Error calling Gemini API:", e)
+    
+    # Fallback message if the API call fails.
+    return "Hey, just checking in—how are you feeling now? Has the stress eased a bit?"

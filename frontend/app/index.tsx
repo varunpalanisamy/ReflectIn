@@ -85,27 +85,25 @@ export default function ChatScreen() {
 
   const sendMessage = async () => {
     if (!input.trim()) return;
-
-    // Capture the current input value
+  
+    // Capture the current input value and clear input immediately.
     const messageToSend = input;
-
-    // Immediately clear the text input
     setInput("");
-
-    // Cancel any pending notifications if the user sends a new message
+  
+    // Cancel any pending notifications if the user sends a new message.
     if (notificationTimer.current) {
       clearTimeout(notificationTimer.current);
       await cancelAllNotifications();
     }
-
-    // Append the user's message to the chat
+  
+    // Append the user's message to the chat.
     const userMessage: Message = {
       id: Date.now().toString(),
       sender: "user",
       text: messageToSend,
     };
     setMessages((prev) => [userMessage, ...prev]);
-
+  
     try {
       const response = await fetch("http://10.0.0.208:8000/chat", {
         method: "POST",
@@ -119,25 +117,47 @@ export default function ChatScreen() {
         text: data.bot_reply,
       };
       setMessages((prev) => [botMessage, ...prev]);
-
-      // Start the notification timer: if no new message arrives within 15 seconds, schedule notifications.
-      // Start the notification timer: if no new message arrives within 15 seconds, schedule the first notification.
+  
+      // Get the sentiment score from the backend response.
+      const sentimentScore = data.sentiment?.sentiment_score;
+      let additionalDelaySeconds = 0;
+      if (sentimentScore !== undefined) {
+        if (sentimentScore <= 4) {
+          additionalDelaySeconds = 15; // Negative: wait an additional 15 sec (total 30 sec)
+        } else if (sentimentScore >= 7) {
+          additionalDelaySeconds = 60; // Positive: wait an additional 60 sec (total 75 sec)
+        } else {
+          additionalDelaySeconds = 0; // Medium: no additional delay (total 15 sec)
+        }
+      }
+  
+      // Calculate total delay (in milliseconds).
+      const baseDelay = 15000; // 15 seconds quiet period.
+      const totalDelay = baseDelay + additionalDelaySeconds * 1000;
+  
+      // Set up a debug interval to log elapsed time every 5 seconds.
+      const debugStart = Date.now();
+      const debugInterval = setInterval(() => {
+        const elapsed = Math.floor((Date.now() - debugStart) / 1000);
+        console.log(`Notification timer elapsed: ${elapsed} seconds`);
+      }, 5000);
+  
+      // Start the notification timer.
       notificationTimer.current = setTimeout(async () => {
-        // Send the first notification after 15 seconds of inactivity.
-        await scheduleLocalNotification(0, "Hey! Venty here! How are you feeling now?");
-
-        // After the first notification, wait an additional 10 seconds before sending the second one.
-        setTimeout(async () => {
-          await scheduleLocalNotification(0, "Hello, Just checking in—how are you feeling?");
-        }, 10000); // 10 seconds after the first notification
-      }, 15000); // 15 seconds of inactivity before the first notification
-
+        // Clear the debug interval.
+        clearInterval(debugInterval);
+        console.log("Scheduling notification now after", totalDelay / 1000, "seconds of inactivity");
+        await scheduleLocalNotification(0, "Venty: How are you feeling now?");
+      }, totalDelay);
+  
     } catch (error) {
       console.error("Error sending message:", error);
     }
-
+  
     Keyboard.dismiss();
   };
+  
+  
 
   const renderItem = ({ item }: { item: Message }) => (
     <View

@@ -229,7 +229,7 @@ def generate_checkup_message(thread_id: str) -> str:
                 f"Based on our previous conversation summarized as: '{summary_text}', "
                 f"generate one clear, creative, and supportive check-up message asking: "
                 f"'How are you feeling now? Has your situation improved?' "
-                f"Keep it friendly and uplifting. REMEMBER JUST ONE RESPONSE. that should be the only thing in the output."
+                f"Keep it friendly and uplifting. REMEMBER JUST ONE RESPONSE. that should be the only thing in the output. Also keep in mind to definitely bring up the main topic of conversation in the follow up message."
             )
         else:
             prompt_text = (

@@ -32,16 +32,22 @@ export default function ChatScreen() {
   useEffect(() => {
     registerForPushNotificationsAsync();
 
-    const subscription = Notifications.addNotificationReceivedListener(notification => {
+    const subscription = Notifications.addNotificationReceivedListener((notification) => {
       const { body } = notification.request.content;
       if (body) {
-        setMessages(prev => [...prev, { id: Date.now().toString(), sender: "bot", text: body }]);
+        const botMessage: Message = {
+          id: Date.now().toString(),
+          sender: "bot",
+          text: body,
+        };
+        setMessages((prev) => [...prev, botMessage]);
         flatListRef.current?.scrollToEnd({ animated: true });
       }
     });
 
-    const responseSubscription = Notifications.addNotificationResponseReceivedListener(response => {
-      const notifBody = response.notification.request.content.body || "";
+    const responseSubscription = Notifications.addNotificationResponseReceivedListener((response) => {
+      const notifData = response.notification.request.content;
+      const notifBody = notifData.body || "";
       setInput(notifBody);
       Alert.alert("Notification Clicked", notifBody);
     });
@@ -90,7 +96,7 @@ export default function ChatScreen() {
       sender: "user",
       text: messageToSend,
     };
-    setMessages(prev => [...prev, userMessage]);
+    setMessages((prev) => [...prev, userMessage]);
 
     try {
       const response = await fetch("http://10.0.0.208:8000/chat", {
@@ -105,18 +111,57 @@ export default function ChatScreen() {
         sender: "bot",
         text: data.bot_reply,
       };
-      setMessages(prev => [...prev, botMessage]);
+      setMessages((prev) => [...prev, botMessage]);
       flatListRef.current?.scrollToEnd({ animated: true });
 
-      // Set up delayed notification logic...
-      // (same code you already have)
+      // Sentiment-based delay for notifications
+      const sentimentScore = data.sentiment?.sentiment_score;
+      let additionalDelaySeconds = 0;
+      if (sentimentScore !== undefined) {
+        if (sentimentScore <= 4) {
+          additionalDelaySeconds = 15; // Negative sentiment: total 30 sec delay
+        } else if (sentimentScore >= 7) {
+          additionalDelaySeconds = 60; // Positive sentiment: total 75 sec delay
+        } else {
+          additionalDelaySeconds = 0;  // Medium sentiment: total 15 sec delay
+        }
+      }
+
+      // Calculate total delay (base 15 sec + additional)
+      const baseDelay = 15000;
+      const totalDelay = baseDelay + additionalDelaySeconds * 1000;
+
+      // Start the notification timer
+      notificationTimer.current = setTimeout(async () => {
+        console.log("Scheduling notification after delay of", totalDelay / 1000, "seconds");
+        try {
+          const threadId = data.thread_id || "";
+          console.log("Fetching checkup message for notification...");
+
+          const checkupResponse = await fetch(`http://10.0.0.208:8000/checkup?thread_id=${threadId}`);
+          const checkupData = await checkupResponse.json();
+          const checkupMessage = checkupData.checkup_message || "Venty: How are you feeling now?";
+
+          console.log("Scheduling notification with checkup message:", checkupMessage);
+          await scheduleLocalNotification(0, checkupMessage);
+        } catch (error) {
+          console.error("Error fetching checkup message:", error);
+          await scheduleLocalNotification(0, "Venty: How are you feeling now?");
+        }
+      }, totalDelay);
+
     } catch (error) {
       console.error("Error sending message:", error);
     }
   };
 
   const renderItem = ({ item }: { item: Message }) => (
-    <View style={[styles.messageContainer, item.sender === "user" ? styles.userMessage : styles.botMessage]}>
+    <View
+      style={[
+        styles.messageContainer,
+        item.sender === "user" ? styles.userMessage : styles.botMessage,
+      ]}
+    >
       <Text style={styles.messageText}>{item.text}</Text>
     </View>
   );

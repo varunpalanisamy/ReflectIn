@@ -1,5 +1,5 @@
-# ReflectIn
-ReflectIn
+# Venty
+Venty
 * allows users to vent to a chatbot and will prompt self-reflection to a user
 * understands context of each reflection session
 * tracts emotional history with nuance

@@ -15,7 +15,11 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import * as Notifications from "expo-notifications";
 import * as Device from "expo-device";
-import { scheduleLocalNotification, cancelAllNotifications } from "@/app/NotificationsManager";
+import {
+  scheduleLocalNotification,
+  cancelAllNotifications,
+} from "@/app/NotificationsManager";
+import { useUserPrefs } from "../UserPrefsContext"; // adjust path if needed
 
 interface Message {
   id: string;
@@ -29,28 +33,41 @@ export default function ChatScreen() {
   const notificationTimer = useRef<NodeJS.Timeout | null>(null);
   const flatListRef = useRef<FlatList<Message>>(null);
 
+  const { prefs } = useUserPrefs();
+  const persona = prefs.persona || "default";
+  const band1 = prefs.band1 || "default_band1";
+  const band2 = prefs.band2 || "default_band2";
+  const band3 = prefs.band3 || "default_band3";
+  const band4 = prefs.band4 || "default_band4";
+  const band5 = prefs.band5 || "default_band5";
+
+  console.log("ChatScreen params:", prefs);
+
   useEffect(() => {
     registerForPushNotificationsAsync();
 
-    const subscription = Notifications.addNotificationReceivedListener((notification) => {
-      const { body } = notification.request.content;
-      if (body) {
-        const botMessage: Message = {
-          id: Date.now().toString(),
-          sender: "bot",
-          text: body,
-        };
-        setMessages((prev) => [...prev, botMessage]);
-        flatListRef.current?.scrollToEnd({ animated: true });
+    const subscription = Notifications.addNotificationReceivedListener(
+      (notification) => {
+        const { body } = notification.request.content;
+        if (body) {
+          const botMessage: Message = {
+            id: Date.now().toString(),
+            sender: "bot",
+            text: body,
+          };
+          setMessages((prev) => [...prev, botMessage]);
+          flatListRef.current?.scrollToEnd({ animated: true });
+        }
       }
-    });
+    );
 
-    const responseSubscription = Notifications.addNotificationResponseReceivedListener((response) => {
-      const notifData = response.notification.request.content;
-      const notifBody = notifData.body || "";
-      setInput(notifBody);
-      Alert.alert("Notification Clicked", notifBody);
-    });
+    const responseSubscription =
+      Notifications.addNotificationResponseReceivedListener((response) => {
+        const notifData = response.notification.request.content;
+        const notifBody = notifData.body || "";
+        setInput(notifBody);
+        Alert.alert("Notification Clicked", notifBody);
+      });
 
     return () => {
       subscription.remove();
@@ -63,7 +80,8 @@ export default function ChatScreen() {
 
   async function registerForPushNotificationsAsync() {
     if (Device.isDevice) {
-      const { status: existingStatus } = await Notifications.getPermissionsAsync();
+      const { status: existingStatus } =
+        await Notifications.getPermissionsAsync();
       let finalStatus = existingStatus;
       if (existingStatus !== "granted") {
         const { status } = await Notifications.requestPermissionsAsync();
@@ -99,12 +117,25 @@ export default function ChatScreen() {
     setMessages((prev) => [...prev, userMessage]);
 
     try {
-      const response = await fetch("http://10.0.0.208:8000/chat", {
+      const API_HOST = "10.0.0.97";
+      console.log("🚀 About to POST to:", `http://${API_HOST}:8000/chat`);
+
+      const response = await fetch(`http://${API_HOST}:8000/chat`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ user_message: messageToSend }),
+        body: JSON.stringify({
+          user_message: messageToSend,
+          persona,
+          band1,
+          band2,
+          band3,
+          band4,
+          band5
+        }),
       });
       const data = await response.json();
+
+      console.log("done");
 
       const botMessage: Message = {
         id: (Date.now() + 1).toString(),
@@ -123,7 +154,7 @@ export default function ChatScreen() {
         } else if (sentimentScore >= 7) {
           additionalDelaySeconds = 60; // Positive sentiment: total 75 sec delay
         } else {
-          additionalDelaySeconds = 0;  // Medium sentiment: total 15 sec delay
+          additionalDelaySeconds = 0; // Medium sentiment: total 15 sec delay
         }
       }
 
@@ -133,23 +164,32 @@ export default function ChatScreen() {
 
       // Start the notification timer
       notificationTimer.current = setTimeout(async () => {
-        console.log("Scheduling notification after delay of", totalDelay / 1000, "seconds");
+        console.log(
+          "Scheduling notification after delay of",
+          totalDelay / 1000,
+          "seconds"
+        );
         try {
           const threadId = data.thread_id || "";
           console.log("Fetching checkup message for notification...");
 
-          const checkupResponse = await fetch(`http://10.0.0.208:8000/checkup?thread_id=${threadId}`);
+          const checkupResponse = await fetch(
+            `http://10.0.0.97:8000/checkup?thread_id=${threadId}`
+          );
           const checkupData = await checkupResponse.json();
-          const checkupMessage = checkupData.checkup_message || "Venty: How are you feeling now?";
+          const checkupMessage =
+            checkupData.checkup_message || "Venty: How are you feeling now?";
 
-          console.log("Scheduling notification with checkup message:", checkupMessage);
+          console.log(
+            "Scheduling notification with checkup message:",
+            checkupMessage
+          );
           await scheduleLocalNotification(0, checkupMessage);
         } catch (error) {
           console.error("Error fetching checkup message:", error);
           await scheduleLocalNotification(0, "Venty: How are you feeling now?");
         }
       }, totalDelay);
-
     } catch (error) {
       console.error("Error sending message:", error);
     }
@@ -174,10 +214,15 @@ export default function ChatScreen() {
         renderItem={renderItem}
         keyExtractor={(item) => item.id}
         contentContainerStyle={styles.chatContainer}
-        onContentSizeChange={() => flatListRef.current?.scrollToEnd({ animated: true })}
+        onContentSizeChange={() =>
+          flatListRef.current?.scrollToEnd({ animated: true })
+        }
       />
 
-      <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} style={styles.inputContainer}>
+      <KeyboardAvoidingView
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
+        style={styles.inputContainer}
+      >
         <TextInput
           style={styles.textInput}
           placeholder="Vent :)"
@@ -185,7 +230,11 @@ export default function ChatScreen() {
           value={input}
           onChangeText={setInput}
         />
-        <TouchableOpacity onPress={sendMessage} style={styles.sendButton} disabled={!input.trim()}>
+        <TouchableOpacity
+          onPress={sendMessage}
+          style={styles.sendButton}
+          disabled={!input.trim()}
+        >
           <Text style={styles.sendButtonText}>Send</Text>
         </TouchableOpacity>
       </KeyboardAvoidingView>

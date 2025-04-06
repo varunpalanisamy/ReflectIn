@@ -97,7 +97,12 @@ def analyze_context(text):
     }
 
 
-def process_vent(vent_text: str):
+def process_vent(vent_text: str, persona: Optional[str] = None,
+                 band1: Optional[str] = None,
+                 band2: Optional[str] = None,
+                 band3: Optional[str] = None,
+                 band4: Optional[str] = None,
+                 band5: Optional[str] = None):
     if not GEMINI_API_KEY:
         return {
             "summary": "Error: API key not set",
@@ -133,12 +138,28 @@ def process_vent(vent_text: str):
     # Decide which prompt to use:
     if memory_context:
         # If memory exists, use the previously aggregated summary (or any chosen previous summary) as memory
-        reflective_prompt_text = get_prompt_for_reflection_with_memory(
-            sentiment_result["sentiment_score"], vent_text, summary_prompt
+        reflective_prompt_text = get_prompt_for_reflection(
+            sentiment_result["sentiment_score"],
+            vent_text,
+            summary_prompt,
+            persona or "supportive guide",
+            band1 or "",
+            band2 or "",
+            band3 or "",
+            band4 or "",
+            band5 or ""
         )
     else:
-        reflective_prompt_text = get_prompt_for_reflection(sentiment_result["sentiment_score"], vent_text)
-
+        reflective_prompt_text = get_prompt_for_reflection(
+            sentiment_result["sentiment_score"],
+            vent_text,
+            persona or "supportive guide",
+            band1 or "",
+            band2 or "",
+            band3 or "",
+            band4 or "",
+            band5 or ""
+        )
 
     reflection_prompt = {
         "contents": [

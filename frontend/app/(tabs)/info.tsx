@@ -49,8 +49,8 @@ export default function InfoScreen() {
           <View style={styles.avatarContainer}>
             <Text style={styles.avatarText}>JD</Text>
           </View>
-          <Text style={styles.name}>John Doe</Text>
-          <Text style={styles.email}>john.doe@example.com</Text>
+          <Text style={styles.name}>Jane Doe</Text>
+          <Text style={styles.email}>jane.doe@example.com</Text>
         </View>
 
         <View style={styles.menuSection}>

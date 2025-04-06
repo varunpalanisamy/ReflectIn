@@ -1,23 +1,38 @@
-import { Tabs } from 'expo-router';
+import { useEffect } from 'react';
+import { Stack, SplashScreen } from 'expo-router';
+import { StatusBar } from 'expo-status-bar';
+import { useFrameworkReady } from '@/hooks/useFrameworkReady';
+import { useFonts, Inter_400Regular, Inter_600SemiBold } from '@expo-google-fonts/inter';
+import { PlayfairDisplay_700Bold } from '@expo-google-fonts/playfair-display';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
-export default function Layout() {
+SplashScreen.preventAutoHideAsync();
+
+export default function RootLayout() {
+  useFrameworkReady();
+
+  const [fontsLoaded, fontError] = useFonts({
+    Inter: Inter_400Regular,
+    InterSemiBold: Inter_600SemiBold,
+    PlayfairBold: PlayfairDisplay_700Bold,
+  });
+
+  useEffect(() => {
+    if (fontsLoaded || fontError) {
+      SplashScreen.hideAsync();
+    }
+  }, [fontsLoaded, fontError]);
+
+  if (!fontsLoaded && !fontError) {
+    return null;
+  }
+
   return (
-    <Tabs
-      screenOptions={{
-        headerStyle: {
-          backgroundColor: '#222021', // Dark gray header
-        },
-        headerTintColor: '#fff',   // White header text
-        tabBarStyle: {
-          backgroundColor: '#222021', // Dark gray tab bar
-        },
-        tabBarActiveTintColor: '#D3C7FF',  // Active tab tint (light lavender)
-        tabBarInactiveTintColor: '#fff',   // Inactive tab tint (white)
-      }}
-    >
-      <Tabs.Screen name="index" options={{ title: 'Chat' }} />
-      <Tabs.Screen name="mood" options={{ title: 'Mood' }} />
-      <Tabs.Screen name="info" options={{ title: 'Info' }} />
-    </Tabs>
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <StatusBar style="dark" />
+      <Stack screenOptions={{ headerShown: false }}>
+        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+      </Stack>
+    </GestureHandlerRootView>
   );
 }

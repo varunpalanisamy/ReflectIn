@@ -3,6 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.routes import router
 from app.services.scheduler import start_scheduler
 
+
 app = FastAPI(title="ReflectIn Backend")
 
 # Configure CORS to allow requests from any origin (adjust for production)

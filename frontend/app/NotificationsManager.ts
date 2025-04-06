@@ -24,7 +24,7 @@ export async function scheduleLocalNotification(delaySeconds: number, message: s
   }
   await Notifications.scheduleNotificationAsync({
     content: {
-      title: 'ReflectIn Reminder',
+      title: 'Venty',
       body: message,
     },
     trigger: { seconds: delaySeconds },

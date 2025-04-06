@@ -32,7 +32,7 @@ def send_followup_notification():
     if notifications_sent == 0:
         # Send the first notification
         notification_text = generate_generic_notification_message()
-        print(notification_text)  # Print only the notification message
+        # print(notification_text)  # Print only the notification message
         conversations.update_one(
             {"_id": last_convo["_id"]},
             {"$set": {"notifications_sent": 1, "first_notification_time": now}}
@@ -42,7 +42,7 @@ def send_followup_notification():
         if first_notification_time and (now - first_notification_time).total_seconds() > 15:
             # Send the second notification
             notification_text = generate_generic_notification_message()
-            print(notification_text)  # Print only the notification message
+            # print(notification_text)  # Print only the notification message
             conversations.update_one(
                 {"_id": last_convo["_id"]},
                 {"$set": {"notifications_sent": 2}}

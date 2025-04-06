@@ -103,7 +103,7 @@ def query_similar_entries_with_thread(user_id: str, current_text: str, threshold
             past_embedding = get_embedding(past_text)
             sim = cosine_similarity([current_embedding], [past_embedding])[0][0]
             # Debug: Print the similarity score and the ID of the entry being compared.
-            print(f"DEBUG: Comparing current_text with entry {entry.get('_id')} | Similarity: {sim:.4f}")
+            # print(f"DEBUG: Comparing current_text with entry {entry.get('_id')} | Similarity: {sim:.4f}")
             if sim >= threshold:
                 past_summary = entry.get("summary", "").strip()
                 past_reply = entry.get("bot_reply", "").strip()

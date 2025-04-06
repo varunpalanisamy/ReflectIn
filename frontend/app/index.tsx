@@ -121,16 +121,17 @@ export default function ChatScreen() {
       setMessages((prev) => [botMessage, ...prev]);
 
       // Start the notification timer: if no new message arrives within 15 seconds, schedule notifications.
+      // Start the notification timer: if no new message arrives within 15 seconds, schedule the first notification.
       notificationTimer.current = setTimeout(async () => {
-        await scheduleLocalNotification(
-          0,
-          "ReflectIn would love to know: How are you feeling now?"
-        );
-        await scheduleLocalNotification(
-          10,
-          "ReflectIn: Just checking in—how are you feeling?"
-        );
-      }, 15000); // 15 seconds
+        // Send the first notification after 15 seconds of inactivity.
+        await scheduleLocalNotification(0, "Hey! Venty here! How are you feeling now?");
+
+        // After the first notification, wait an additional 10 seconds before sending the second one.
+        setTimeout(async () => {
+          await scheduleLocalNotification(0, "Hello, Just checking in—how are you feeling?");
+        }, 10000); // 10 seconds after the first notification
+      }, 15000); // 15 seconds of inactivity before the first notification
+
     } catch (error) {
       console.error("Error sending message:", error);
     }

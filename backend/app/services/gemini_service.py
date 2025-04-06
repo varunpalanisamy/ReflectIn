@@ -4,12 +4,15 @@ import spacy
 from app.config import GEMINI_API_KEY
 from app.prompts import get_prompt_for_reflection
 from app.config import conversations
-from .filtering import query_similar_entries, get_prompt_for_reflection_with_memory
+from .filtering import query_similar_entries, get_prompt_for_reflection_with_memory, query_similar_entries_with_thread
 from datetime import datetime
+from uuid import uuid4
 
-def save_conversation(user_id, topic, user_message, summary, bot_reply, sentiment, context):
+
+def save_conversation(user_id, thread_id, topic, user_message, summary, bot_reply, sentiment, context):
     entry = {
         "user_id": user_id,
+        "thread_id": thread_id,
         "topic": topic,
         "user_message": user_message,
         "summary": summary,
@@ -20,8 +23,9 @@ def save_conversation(user_id, topic, user_message, summary, bot_reply, sentimen
     }
     conversations.insert_one(entry)
 
+
 # Load SpaCy model for context analysis
-nlp = spacy.load("en_core_web_sm")
+nlp = spacy.load("en_core_web_md")
 
 def analyze_sentiment(text):
     analysis = TextBlob(text)
@@ -43,9 +47,9 @@ def analyze_sentiment(text):
 
 def analyze_context(text):
 
-    doc = nlp(text)
-    entities = [ent.text for ent in doc.ents]
-    topics = set([token.lemma_ for token in doc if token.is_alpha and not token.is_stop])
+    # doc = nlp(text)
+    # entities = [ent.text for ent in doc.ents]
+    # topics = set([token.lemma_ for token in doc if token.is_alpha and not token.is_stop])
 
     """
     Perform context analysis using SpaCy to extract entities and topics,
@@ -108,7 +112,9 @@ def process_vent(vent_text: str):
     user_id = "shivani"  # (Replace with dynamic user info as needed)
 
     # First, query for similar past entries using the current vent text.
-    memory_context = query_similar_entries(user_id, vent_text)
+    existing_thread_id, memory_context = query_similar_entries_with_thread(user_id, vent_text)
+    
+    thread_id = existing_thread_id if existing_thread_id else str(uuid4())
     
     # Decide which prompt to use:
     if memory_context:
@@ -177,6 +183,7 @@ def process_vent(vent_text: str):
         # Save the conversation to MongoDB
         save_conversation(
             user_id=user_id,
+            thread_id=thread_id,
             topic=topic,
             user_message=vent_text,
             summary=summary_text,
@@ -187,9 +194,10 @@ def process_vent(vent_text: str):
 
         return {
             "user_message": vent_text,
-            "topic": topic, 
+            "topic": topic,
             "summary": summary_text,
             "bot_reply": reflection_text,
+            "thread_id": thread_id,  # Optionally return thread_id for debugging or UI
             "sentiment": sentiment_result,
             "context": context_result
         }
@@ -197,8 +205,10 @@ def process_vent(vent_text: str):
     except requests.exceptions.RequestException as e:
         return {
             "user_message": vent_text,
+            "topic": topic,
             "summary": "Summary unavailable due to an error.",
             "bot_reply": "Could you tell me more about what happened?",
+            "thread_id": thread_id,
             "sentiment": sentiment_result,
             "context": context_result
         }

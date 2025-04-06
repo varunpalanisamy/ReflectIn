@@ -116,12 +116,7 @@ def process_vent(vent_text: str):
     
     thread_id = existing_thread_id if existing_thread_id else str(uuid4())
     
-    # Decide which prompt to use:
-    if memory_context:
-        reflective_prompt_text = get_prompt_for_reflection_with_memory(vent_text, memory_context)
-    else:
-        reflective_prompt_text = get_prompt_for_reflection(sentiment_result["sentiment_score"], vent_text)
-
+    
     summary_prompt = {
         "contents": [
             {
@@ -134,6 +129,16 @@ def process_vent(vent_text: str):
             "temperature": 0.3
         }
     }
+    
+    # Decide which prompt to use:
+    if memory_context:
+        # If memory exists, use the previously aggregated summary (or any chosen previous summary) as memory
+        reflective_prompt_text = get_prompt_for_reflection_with_memory(
+            sentiment_result["sentiment_score"], vent_text, summary_prompt
+        )
+    else:
+        reflective_prompt_text = get_prompt_for_reflection(sentiment_result["sentiment_score"], vent_text)
+
 
     reflection_prompt = {
         "contents": [

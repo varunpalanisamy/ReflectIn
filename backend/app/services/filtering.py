@@ -38,17 +38,50 @@ def query_similar_entries(user_id: str, current_text: str, threshold: float = 0.
                 memory_lines.append(f"Previously, you mentioned: '{past_summary}' and I replied: '{past_reply}'.")
     return "\n".join(memory_lines)
 
-def get_prompt_for_reflection_with_memory(current_vent: str, memory_context: str) -> str:
+def get_prompt_for_reflection_with_memory(score: int, current_vent: str, previous_summary: str) -> str:
     """
-    Create a prompt that incorporates the memory context from similar past entries.
+    Returns a full Gemini prompt that uses a previous conversation summary (previous_summary),
+    along with the current vent, to generate reflective advice. The tone is adjusted based on the sentiment score.
     """
-    prompt = (
-        f"In previous conversations, you mentioned the following:\n{memory_context}\n\n"
-        f"Now, considering your current message: '{current_vent}', please provide further reflective advice that builds on the past discussion. Limit response to 50-100 words."
-    )
-    return prompt
+    if score in [1, 2]:
+        return (
+            f"Act as a compassionate, urgent support guide. Previously, you mentioned: {previous_summary}. "
+            f"Now, considering your current message: '{current_vent}', provide gentle and supportive reflective advice. "
+            f"Limit your response to 50 words."
+        )
+    elif score in [3, 4]:
+        return (
+            f"Act as an empathetic reflection coach. Previously, you shared: {previous_summary}. "
+            f"Now, with your current message: '{current_vent}', ask a thoughtful, open-ended question to explore your emotions further. "
+            f"Limit your response to 50 words."
+        )
+    elif score in [5, 6]:
+        return (
+            f"Act as a calm and balanced emotional assistant. Previously, you noted: {previous_summary}. "
+            f"Now, given your current message: '{current_vent}', generate a simple reflective question that helps you understand your emotions better. "
+            f"Limit your response to 50 words."
+        )
+    elif score in [7, 8]:
+        return (
+            f"Act as an encouraging wellness coach. Previously, you stated: {previous_summary}. "
+            f"Now, considering your current message: '{current_vent}', provide reflective advice that celebrates your progress and suggests what might help further. "
+            f"Limit your response to 50 words."
+        )
+    elif score in [9, 10]:
+        return (
+            f"Act as a cheerful support figure. Previously, you shared: {previous_summary}. "
+            f"Now, with your current message: '{current_vent}', generate a positive, brief reflective question that motivates you to continue your progress. "
+            f"Limit your response to 50 words."
+        )
+    else:
+        return (
+            f"Act as a thoughtful guide. Previously, you mentioned: {previous_summary}. "
+            f"Now, considering your current message: '{current_vent}', provide a concise reflective question to help you understand your feelings. "
+            f"Limit your response to 20 words."
+        )
 
-def query_similar_entries_with_thread(user_id: str, current_text: str, threshold: float = 0.75) -> Tuple[Optional[str], str]:
+
+def query_similar_entries_with_thread(user_id: str, current_text: str, threshold: float = 0.9) -> Tuple[Optional[str], str]:
     """
     Query MongoDB for past entries for the given user whose summary (or user_message) 
     embedding is similar to the embedding of current_text.
@@ -69,11 +102,13 @@ def query_similar_entries_with_thread(user_id: str, current_text: str, threshold
         if past_text:
             past_embedding = get_embedding(past_text)
             sim = cosine_similarity([current_embedding], [past_embedding])[0][0]
+            # Debug: Print the similarity score and the ID of the entry being compared.
+            print(f"DEBUG: Comparing current_text with entry {entry.get('_id')} | Similarity: {sim:.4f}")
             if sim >= threshold:
                 past_summary = entry.get("summary", "").strip()
                 past_reply = entry.get("bot_reply", "").strip()
                 memory_lines.append(f"Previously, you mentioned: '{past_summary}' and I replied: '{past_reply}'.")
-                # If this entry has a thread_id and we haven't captured one yet, use it.
+                # Capture the thread_id from the first matching entry.
                 if entry.get("thread_id") and not thread_id_found:
                     thread_id_found = entry["thread_id"]
     

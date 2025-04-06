@@ -117,6 +117,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
     padding: 20,
+    backgroundColor: "#FFF1DE",
   },
   title: {
     fontSize: 24,
@@ -125,11 +126,11 @@ const styles = StyleSheet.create({
     textAlign: "center",
   },
   button: {
-    backgroundColor: "#4313FE",
+    backgroundColor: "#1A1A1A",
     padding: 15,
     borderRadius: 10,
     marginVertical: 8,
     width: "80%",
   },
-  buttonText: { color: "#fff", textAlign: "center", fontSize: 18 },
+  buttonText: { color: "#FFF1DE", textAlign: "center", fontSize: 18 },
 });

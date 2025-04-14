@@ -1,9 +1,4 @@
 # Venty
-Venty
-* allows users to vent to a chatbot and will prompt self-reflection to a user
-* understands context of each reflection session
-* tracts emotional history with nuance
-* adapts future reflection prompts based on past experiences with user.
 
 <p align="center">
   <img src="./screenshots/home.jpeg" height="375"/>
@@ -12,6 +7,13 @@ Venty
   <img src="./screenshots/question.jpeg" height="375"/>
   <img src="./screenshots/profile.jpeg" height="375"/>
 </p>
+
+## Features
+* allows users to vent to a chatbot and will prompt self-reflection to a user
+* understands context of each reflection session
+* tracts emotional history with nuance
+* adapts future reflection prompts based on past experiences with user.
+
 
 
 ### Getting Started

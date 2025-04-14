@@ -2,7 +2,6 @@
 
 <p align="center">
   <img src="./screenshots/home.jpeg" height="375"/>
-  <img src="./screenshots/chat.jpeg" height="375"/>
   <img src="./screenshots/notif.jpeg" height="375"/>
   <img src="./screenshots/question.jpeg" height="375"/>
   <img src="./screenshots/profile.jpeg" height="375"/>

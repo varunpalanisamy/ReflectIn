@@ -5,12 +5,12 @@ Venty
 * tracts emotional history with nuance
 * adapts future reflection prompts based on past experiences with user.
 
-<p align="left">
-  <img src="./screenshots/home.jpeg" height="350"/>
-  <img src="./screenshots/chat.jpeg" height="350"/>
-  <img src="./screenshots/notif.jpeg" height="350"/>
-  <img src="./screenshots/question.jpeg" height="350"/>
-  <img src="./screenshots/profile.jpeg" height="350"/>
+<p align="center">
+  <img src="./screenshots/home.jpeg" height="375"/>
+  <img src="./screenshots/chat.jpeg" height="375"/>
+  <img src="./screenshots/notif.jpeg" height="375"/>
+  <img src="./screenshots/question.jpeg" height="375"/>
+  <img src="./screenshots/profile.jpeg" height="375"/>
 </p>
 
 
